@@ -8,6 +8,8 @@ const sourcePath = join(directory, 'source-image.jpg');
 const outputDirectory = resolve(directory, process.env.MAKEFUN_OUTPUT_DIR ?? '/output');
 const outputPath = join(outputDirectory, 'entry.png');
 const maximumBytes = 1_048_576;
+const expectedWidth = 1024;
+const expectedHeight = 1024;
 
 function jpegDimensions(bytes: Buffer): { width: number; height: number } {
   if (
@@ -41,10 +43,13 @@ function jpegDimensions(bytes: Buffer): { width: number; height: number } {
       throw new Error('Invalid or truncated JPEG segment.');
     }
 
-    // Start-of-frame markers contain dimensions; C4, C8, and CC are other tables.
+    // SOF segments store height and width; C4, C8, and CC are not frame headers.
     const isStartOfFrame =
-      marker >= 0xc0 && marker <= 0xcf &&
-      marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc;
     if (isStartOfFrame) {
       if (length < 8) throw new Error('Truncated JPEG frame header.');
       const components = bytes[offset + 7];
@@ -62,19 +67,29 @@ function jpegDimensions(bytes: Buffer): { width: number; height: number } {
   throw new Error('JPEG header has no frame dimensions before the image data.');
 }
 
+function validateImage(bytes: Buffer, label: string): void {
+  if (bytes.length > maximumBytes) {
+    throw new Error(`${label} is ${bytes.length} bytes; the maximum is ${maximumBytes} bytes.`);
+  }
+
+  const { width, height } = jpegDimensions(bytes);
+  if (width !== expectedWidth || height !== expectedHeight) {
+    throw new Error(
+      `${label} is ${width}x${height}; expected exactly ${expectedWidth}x${expectedHeight} pixels.`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
   const source = await readFile(sourcePath);
+  validateImage(source, 'source-image.jpg');
+
   await mkdir(outputDirectory, { recursive: true });
+  // The required .png filename contains the original JPEG buffer, without encoding.
   await writeFile(outputPath, source);
 
   const written = await readFile(outputPath);
-  if (written.length > maximumBytes) {
-    throw new Error(`Image is ${written.length} bytes; the maximum is ${maximumBytes} bytes.`);
-  }
-  const { width, height } = jpegDimensions(written);
-  if (width !== 1024 || height !== 1024) {
-    throw new Error(`Image is ${width}x${height}; expected exactly 1024x1024 pixels.`);
-  }
+  validateImage(written, 'entry.png');
   if (!written.equals(source)) {
     throw new Error('Written image differs from source-image.jpg.');
   }

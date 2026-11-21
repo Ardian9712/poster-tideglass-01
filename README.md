@@ -5,7 +5,7 @@
 
 # The Poster for a Place That Isn't There — Tideglass
 
-A travel poster for the entirely fictional place Tideglass: a black-basalt tidal shelf at low tide, clear cobalt pools, and a green-glass spiral lighthouse wrapped around a freshwater spring. A rain shower has just passed; amber sunlight catches the glass and copper-warm rocks, with a calm sea at the horizon. The name TIDEGLASS, set large in gold at the top, is the only text in the image. The clear pools invite you to linger after the rain, then follow the amber-lit spiral toward the spring.
+A travel poster for the entirely fictional place Tideglass: a black-basalt tidal shelf at low tide, clear cobalt pools, and a green-glass spiral lighthouse wrapped around a freshwater spring. A rain shower has just passed; amber sunlight catches the glass and copper-warm rocks, with a calm sea at the horizon. The name TIDEGLASS, set large in gold at the top, is the only text in the image. Arrive after the rain, linger beside the clear pools, and follow the spring's cascades toward the amber-lit glass.
 
 ![Tideglass travel poster](source-image.jpg)
 
@@ -36,18 +36,30 @@ node main.ts
 Or run `npm start`. By default, the program creates `/output` if needed and writes `/output/entry.png`. To choose another directory:
 
 ```sh
-MAKEFUN_OUTPUT_DIR=/tmp/tideglass-output node main.ts
+MAKEFUN_OUTPUT_DIR=/tmp/opencode/tideglass-01-verification node main.ts
 ```
 
 The source path is resolved from the script's own directory with `fileURLToPath(import.meta.url)`, so the program can also be invoked by absolute path from another working directory. A relative `MAKEFUN_OUTPUT_DIR` is resolved from that same script directory.
 
-The program copies `source-image.jpg` byte-for-byte, then reads back the written file and validates its JPEG markers and header dimensions: **JPEG**, exactly **1024×1024 pixels**, and at most **1,048,576 bytes**. It also checks that the written bytes equal the source and throws a clear error on failure. Its success line reports the output path, byte size, and SHA-256. The required filename is `entry.png`; its contents remain the original JPEG, with no conversion, cropping, or re-rendering.
+The program validates `source-image.jpg`, copies it byte-for-byte, then reads back and validates the written file. Both checks require **JPEG** start/end markers and frame-header dimensions of exactly **1024×1024 pixels**, with a size of at most **1,048,576 bytes**. It also checks that the written bytes equal the source and throws a clear error on failure. Its success line reports the output path, byte size, and SHA-256. The required filename is `entry.png`; its contents are the original JPEG, with no conversion, cropping, or re-rendering.
 
 Verified `entry.png`:
 
 - **Byte size:** 393,140 bytes.
 - **SHA-256:** `7df58959975cb6e06280d916f2f77951f08570bb94c26250bdbdf009bc75b9b5`.
 
-Verification ran the program into two different output directories, including an invocation from another working directory. `sha256sum` and `cmp` confirmed both outputs are byte-identical to each other and to `source-image.jpg`, and both satisfy the size limit.
+To reproduce the two-directory determinism and size check on Linux:
+
+```sh
+npm start
+MAKEFUN_OUTPUT_DIR=/tmp/opencode/tideglass-01-verification node main.ts
+sha256sum source-image.jpg /output/entry.png /tmp/opencode/tideglass-01-verification/entry.png
+cmp source-image.jpg /output/entry.png
+cmp /output/entry.png /tmp/opencode/tideglass-01-verification/entry.png
+test "$(stat --format=%s /output/entry.png)" -le 1048576
+test "$(stat --format=%s /tmp/opencode/tideglass-01-verification/entry.png)" -le 1048576
+```
+
+Verification produced matching SHA-256 values, successful byte comparisons, and sizes below the limit for both outputs. An additional check invoked the script by absolute path from another working directory and also succeeded.
 
 Built for make.fun. Referral link: https://make.fun/r/p8atzycs
