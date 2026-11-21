@@ -1,0 +1,14 @@
+{
+  "name": "poster-tideglass-01",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Byte-for-byte Tideglass travel-poster entry for make.fun.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "start": "node main.ts"
+  },
+  "license": "MIT"
+}
